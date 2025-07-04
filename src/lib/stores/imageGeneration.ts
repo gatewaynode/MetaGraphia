@@ -55,11 +55,13 @@ export const generationStore: Writable<GenerationState> = writable({
     
     // Generation state
     isGenerating: false,
-    progress: {
-        current_step: 0,
-        total_steps: 20,
-        status: 'Ready'
-    },
+      progress: {
+    current_step: 0,
+    total_steps: 20,
+    status: 'Ready',
+    is_complete: false,
+    is_cancelled: false
+  },
     
     // Results
     currentResult: null,

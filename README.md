@@ -85,7 +85,7 @@ The target audience includes existing DiffusionBee users and new users who are l
 *   **Security Review:** Always review code for security flaws before finishing a task.
 *   **Simplicity First:** Always review code to make sure it is simple and straightforward before finishing a task.
 *   **Commits:** Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
-*   **Validation:** Validate at least minimally from this folder with `bun run tauri dev`
+*   **Validation:** Validate at least minimally with `bun run tauri dev`, ensure you are in the porting directory, `ported-diffusion-app`, first.
 *   **Documentation:** All new features should be documented in this README or relevant files.
 
 ### Frontend (Svelte / JavaScript)

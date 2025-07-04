@@ -76,11 +76,13 @@ pub struct ImageGenerationResponse {
     pub aux_output_image_path: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerationProgress {
     pub current_step: u32,
     pub total_steps: u32,
     pub status: String,
+    pub is_complete: bool,
+    pub is_cancelled: bool,
 }
 
 // Settings structure for persistence
@@ -111,11 +113,17 @@ struct PythonBackend {
 
 impl PythonBackend {
     fn new() -> Result<Self> {
-        // Get the backend path relative to the executable
-        let backend_path = std::env::current_exe()
-            .context("Failed to get current executable path")?
+        // Get the backend path relative to the project root
+        // In development, we're in the src-tauri directory, so go up to project root
+        let current_dir = std::env::current_dir()
+            .context("Failed to get current directory")?;
+        let project_root = current_dir
             .parent()
-            .context("Failed to get executable directory")?
+            .context("Failed to get project root")?
+            .parent()
+            .context("Failed to get workspace root")?;
+        
+        let backend_path = project_root
             .join("backends")
             .join("stable_diffusion")
             .join("diffusionbee_backend.py");
@@ -137,6 +145,10 @@ impl PythonBackend {
 
 // Global backend instance with proper synchronization
 static BACKEND: Mutex<Option<PythonBackend>> = Mutex::new(None);
+
+// Global generation state
+static GENERATION_PROGRESS: Mutex<Option<GenerationProgress>> = Mutex::new(None);
+static GENERATION_CANCELLED: Mutex<bool> = Mutex::new(false);
 
 fn get_backend() -> Result<PythonBackend> {
     let mut backend_guard = BACKEND.lock()
@@ -161,6 +173,69 @@ async fn generate_image(request: ImageGenerationRequest) -> Result<ImageGenerati
     // Validate the backend is available
     backend.start_backend().map_err(|e| e.to_string())?;
 
+    // Reset progress and cancellation state
+    {
+        let mut progress = GENERATION_PROGRESS.lock()
+            .map_err(|_| "Failed to acquire progress lock".to_string())?;
+        *progress = Some(GenerationProgress {
+            current_step: 0,
+            total_steps: request.num_inference_steps,
+            status: "Initializing...".to_string(),
+            is_complete: false,
+            is_cancelled: false,
+        });
+        
+        let mut cancelled = GENERATION_CANCELLED.lock()
+            .map_err(|_| "Failed to acquire cancellation lock".to_string())?;
+        *cancelled = false;
+    }
+
+    // Simulate image generation with progress updates
+    for step in 0..request.num_inference_steps {
+        // Check if generation was cancelled
+        {
+            let cancelled = GENERATION_CANCELLED.lock()
+                .map_err(|_| "Failed to acquire cancellation lock".to_string())?;
+            if *cancelled {
+                // Update progress to show cancellation
+                if let Some(ref mut progress) = *GENERATION_PROGRESS.lock()
+                    .map_err(|_| "Failed to acquire progress lock".to_string())? {
+                    progress.is_cancelled = true;
+                    progress.status = "Cancelled".to_string();
+                }
+                return Err("Generation cancelled by user".to_string());
+            }
+        }
+
+        // Update progress
+        {
+            let mut progress = GENERATION_PROGRESS.lock()
+                .map_err(|_| "Failed to acquire progress lock".to_string())?;
+            if let Some(ref mut prog) = *progress {
+                prog.current_step = step + 1;
+                prog.status = match step {
+                    s if s < request.num_inference_steps / 4 => "Initializing...".to_string(),
+                    s if s < request.num_inference_steps / 2 => "Building image...".to_string(),
+                    s if s < 3 * request.num_inference_steps / 4 => "Refining details...".to_string(),
+                    _ => "Finalizing...".to_string(),
+                };
+            }
+        }
+
+        // Simulate processing time
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    // Mark as complete
+    {
+        let mut progress = GENERATION_PROGRESS.lock()
+            .map_err(|_| "Failed to acquire progress lock".to_string())?;
+        if let Some(ref mut prog) = *progress {
+            prog.is_complete = true;
+            prog.status = "Complete".to_string();
+        }
+    }
+
     // Prepare the JSON request (for future IPC implementation)
     let _json_request = serde_json::to_string(&request)
         .map_err(|e| e.to_string())?;
@@ -179,17 +254,34 @@ async fn generate_image(request: ImageGenerationRequest) -> Result<ImageGenerati
 
 #[tauri::command]
 async fn get_generation_progress() -> Result<GenerationProgress, String> {
-    // Placeholder implementation
-    Ok(GenerationProgress {
-        current_step: 0,
-        total_steps: 20,
-        status: "Initializing".to_string(),
-    })
+    let progress = GENERATION_PROGRESS.lock()
+        .map_err(|_| "Failed to acquire progress lock".to_string())?;
+    
+    match progress.as_ref() {
+        Some(prog) => Ok(prog.clone()),
+        None => Ok(GenerationProgress {
+            current_step: 0,
+            total_steps: 0,
+            status: "No generation in progress".to_string(),
+            is_complete: false,
+            is_cancelled: false,
+        }),
+    }
 }
 
 #[tauri::command]
 async fn cancel_generation() -> Result<(), String> {
-    // Placeholder implementation
+    let mut cancelled = GENERATION_CANCELLED.lock()
+        .map_err(|_| "Failed to acquire cancellation lock".to_string())?;
+    *cancelled = true;
+    
+    // Update progress to show cancellation
+    if let Some(ref mut progress) = *GENERATION_PROGRESS.lock()
+        .map_err(|_| "Failed to acquire progress lock".to_string())? {
+        progress.is_cancelled = true;
+        progress.status = "Cancelling...".to_string();
+    }
+    
     Ok(())
 }
 
