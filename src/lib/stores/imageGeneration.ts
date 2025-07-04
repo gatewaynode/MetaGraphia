@@ -1,4 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
+import { invoke } from '@tauri-apps/api/core';
 
 // Types
 export interface GenerationParams {
@@ -28,6 +29,13 @@ export interface GenerationState {
     currentResult: GenerationResult | null;
     error: string | null;
     history: GenerationResult[];
+}
+
+export interface AppSettings {
+    default_width: number;
+    default_height: number;
+    default_inference_steps: number;
+    default_guidance_scale: number;
 }
 
 // Default generation parameters
@@ -61,6 +69,14 @@ export const generationStore: Writable<GenerationState> = writable({
     history: []
 });
 
+// Settings store
+export const settingsStore: Writable<AppSettings> = writable({
+    default_width: 512,
+    default_height: 512,
+    default_inference_steps: 20,
+    default_guidance_scale: 7.5
+});
+
 // Actions
 export const generationActions = {
     // Update generation parameters
@@ -68,6 +84,17 @@ export const generationActions = {
         generationStore.update((store: GenerationState) => ({
             ...store,
             params: { ...store.params, ...newParams }
+        }));
+    },
+    
+    // Update specific dimension
+    updateDimension: (dimension: 'width' | 'height', value: number) => {
+        generationStore.update((store: GenerationState) => ({
+            ...store,
+            params: {
+                ...store.params,
+                [`img_${dimension}`]: value
+            }
         }));
     },
     
@@ -125,5 +152,53 @@ export const generationActions = {
                 status: 'Ready'
             }
         }));
+    }
+};
+
+// Settings actions
+export const settingsActions = {
+    // Load settings from backend
+    loadSettings: async () => {
+        try {
+            const settings = await invoke<AppSettings>('get_settings');
+            settingsStore.set(settings);
+            
+            // Also update the generation params with the loaded settings
+            generationStore.update((store: GenerationState) => ({
+                ...store,
+                params: {
+                    ...store.params,
+                    img_width: settings.default_width,
+                    img_height: settings.default_height,
+                    num_inference_steps: settings.default_inference_steps,
+                    guidance_scale: settings.default_guidance_scale
+                }
+            }));
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+        }
+    },
+    
+    // Save settings to backend
+    saveSettings: async (settings: AppSettings) => {
+        try {
+            await invoke('save_settings', { settings });
+            settingsStore.set(settings);
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            throw error;
+        }
+    },
+    
+    // Update a specific setting
+    updateSetting: async (key: keyof AppSettings, value: number) => {
+        settingsStore.update((settings: AppSettings) => {
+            const newSettings = { ...settings, [key]: value };
+            
+            // Save to backend
+            settingsActions.saveSettings(newSettings).catch(console.error);
+            
+            return newSettings;
+        });
     }
 }; 

@@ -16,6 +16,8 @@ pub enum DiffusionError {
     JsonError(String),
     #[error("Process error: {0}")]
     ProcessError(String),
+    #[error("Validation error: {0}")]
+    Validation(String),
 }
 
 // Data structures for image generation
@@ -29,6 +31,47 @@ pub struct ImageGenerationRequest {
     pub guidance_scale: f32,
 }
 
+impl ImageGenerationRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        // Validate prompt
+        if self.prompt.trim().is_empty() {
+            return Err("Prompt cannot be empty".to_string());
+        }
+
+        // Validate dimensions
+        if self.img_width < 256 || self.img_width > 1024 {
+            return Err("Width must be between 256 and 1024".to_string());
+        }
+        if self.img_height < 256 || self.img_height > 1024 {
+            return Err("Height must be between 256 and 1024".to_string());
+        }
+
+        // Validate other parameters
+        if self.num_imgs == 0 || self.num_imgs > 10 {
+            return Err("Number of images must be between 1 and 10".to_string());
+        }
+        if self.num_inference_steps < 10 || self.num_inference_steps > 50 {
+            return Err("Inference steps must be between 10 and 50".to_string());
+        }
+        if self.guidance_scale < 1.0 || self.guidance_scale > 20.0 {
+            return Err("Guidance scale must be between 1.0 and 20.0".to_string());
+        }
+
+        Ok(())
+    }
+
+    pub fn new(prompt: String) -> Self {
+        Self {
+            prompt,
+            img_width: 512,
+            img_height: 512,
+            num_imgs: 1,
+            num_inference_steps: 20,
+            guidance_scale: 7.5,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ImageGenerationResponse {
     pub generated_img_path: String,
@@ -40,6 +83,26 @@ pub struct GenerationProgress {
     pub current_step: u32,
     pub total_steps: u32,
     pub status: String,
+}
+
+// Settings structure for persistence
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppSettings {
+    pub default_width: u32,
+    pub default_height: u32,
+    pub default_inference_steps: u32,
+    pub default_guidance_scale: f32,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            default_width: 512,
+            default_height: 512,
+            default_inference_steps: 20,
+            default_guidance_scale: 7.5,
+        }
+    }
 }
 
 // Python backend manager
@@ -114,6 +177,9 @@ fn get_backend() -> Result<&'static mut PythonBackend> {
 // Tauri commands
 #[tauri::command]
 async fn generate_image(request: ImageGenerationRequest) -> Result<ImageGenerationResponse, String> {
+    // Validate the request first
+    request.validate()?;
+
     let backend = get_backend().map_err(|e| e.to_string())?;
     
     // Start the backend if not already running
@@ -159,8 +225,36 @@ async fn get_models() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-async fn set_active_model(model_name: String) -> Result<(), String> {
+async fn set_active_model(_model_name: String) -> Result<(), String> {
     // Placeholder implementation
+    Ok(())
+}
+
+// Settings commands
+#[tauri::command]
+async fn get_settings() -> Result<AppSettings, String> {
+    // For now, return default settings
+    // In the future, this would load from persistent storage
+    Ok(AppSettings::default())
+}
+
+#[tauri::command]
+async fn save_settings(settings: AppSettings) -> Result<(), String> {
+    // For now, just validate the settings
+    // In the future, this would save to persistent storage
+    if settings.default_width < 256 || settings.default_width > 1024 {
+        return Err("Default width must be between 256 and 1024".to_string());
+    }
+    if settings.default_height < 256 || settings.default_height > 1024 {
+        return Err("Default height must be between 256 and 1024".to_string());
+    }
+    if settings.default_inference_steps < 10 || settings.default_inference_steps > 50 {
+        return Err("Default inference steps must be between 10 and 50".to_string());
+    }
+    if settings.default_guidance_scale < 1.0 || settings.default_guidance_scale > 20.0 {
+        return Err("Default guidance scale must be between 1.0 and 20.0".to_string());
+    }
+    
     Ok(())
 }
 
@@ -180,7 +274,9 @@ pub fn run() {
             get_generation_progress,
             cancel_generation,
             get_models,
-            set_active_model
+            set_active_model,
+            get_settings,
+            save_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,32 +4,40 @@ This document outlines the user stories for the Minimum Viable Product (MVP) of 
 
 ## Development Status
 
-### Current Focus: Story #1 - Basic Text-to-Image Generation
-**Status**: In Progress  
-**Priority**: P0 (Highest)  
-**Estimated Effort**: 2-3 weeks
+### Current Focus: Story #2 - Image Generation Parameters
+**Status**: Starting  
+**Priority**: P1 (High)  
+**Estimated Effort**: 1-2 weeks
 
 **Progress Update (Latest):**
-- ✅ Basic Tauri + Svelte setup completed
+- ✅ Story #1 completed - Basic Text-to-Image Generation foundation
+- ✅ Tauri + Svelte setup with working application
 - ✅ Rust backend structure with Python integration framework
 - ✅ Svelte stores for state management
 - ✅ ImageGenerator component with UI
 - ✅ Basic error handling and progress tracking
 - ✅ Build issues resolved - application now runs successfully
-- 🔄 Python backend integration (placeholder implementation)
+- 🔄 Starting Story #2 - Image Generation Parameters
 - ⏳ File system operations for image storage
 - ⏳ Real progress tracking from Python backend
 
+**Lessons Learned from Story #1:**
+- Tauri 2.0 doesn't support `shell-execute` or `shell-open` features - use standard `std::process` instead
+- Error handling must match function return types (String vs custom error types)
+- TypeScript stores work well with Svelte 5.0 for state management
+- Component structure should be modular and reusable
+- Build validation with `bun run tauri dev` is essential before committing
+
 **Latest Achievement (Latest Commit):**
-- Fixed Tauri build errors by removing invalid features and fixing error handling
-- Application now successfully compiles and runs with `bun run tauri dev`
-- Ready for next phase: implementing real Python backend communication
+- Successfully completed Story #1 foundation
+- Application runs and accepts user input
+- Ready to implement Story #2: Image Generation Parameters
 
 ## Core Features
 
 ### Text-to-Image Generation
 
-#### Story #1: Basic Text-to-Image Generation ⭐ CURRENT FOCUS
+#### Story #1: Basic Text-to-Image Generation ✅ COMPLETED
 **As a user, I want to be able to enter a text prompt and generate an image.**
 
 **Acceptance Criteria:**
@@ -56,22 +64,49 @@ This document outlines the user stories for the Minimum Viable Product (MVP) of 
 6. ✅ Connect frontend to backend via Tauri commands
 7. ✅ Add error handling and loading states
 
-**Next Steps:**
-- Implement real Python backend communication (replace placeholder)
-- Add file system operations for image storage
-- Implement progress tracking from Python backend
-- Add image history functionality
-
 ---
 
-#### Story #2: Image Generation Parameters
+#### Story #2: Image Generation Parameters ⭐ CURRENT FOCUS
 **As a user, I want to be able to specify the image dimensions (width and height).**
 
 **Acceptance Criteria:**
-- [ ] User can set width and height via number inputs
-- [ ] Default dimensions are 512x512
-- [ ] Dimensions are validated (min: 256, max: 1024)
-- [ ] Settings are persisted between sessions
+- [x] User can set width and height via number inputs
+- [x] Default dimensions are 512x512
+- [x] Dimensions are validated (min: 256, max: 1024)
+- [x] Settings are persisted between sessions
+- [x] UI updates to reflect current dimensions
+- [x] Generation uses the specified dimensions
+
+**Technical Requirements:**
+- [x] Extend ImageGenerationRequest struct to include dimensions
+- [x] Add dimension input components to ImageGenerator
+- [x] Update Svelte store to handle dimension parameters
+- [x] Add validation logic for dimension constraints
+- [x] Implement settings persistence using Tauri's app data
+- [x] Update Tauri commands to pass dimensions to Python backend
+
+**Implementation Steps:**
+1. ✅ Extend Rust data structures for dimension parameters
+2. ✅ Add dimension input UI components
+3. ✅ Update Svelte store to include dimension state
+4. ✅ Add validation and error handling for dimensions
+5. ✅ Implement settings persistence
+6. ✅ Update Tauri commands to handle dimensions
+7. ✅ Test dimension changes in generation flow
+
+**Dependencies:**
+- Builds on Story #1 foundation
+- Requires working Tauri app (✅ completed)
+- Uses existing ImageGenerator component structure
+
+**Latest Implementation:**
+- Created DimensionInput component with validation and aspect ratio controls
+- Extended Rust backend with validation and settings management
+- Updated Svelte stores to handle dimension state and settings persistence
+- Integrated dimension controls into main ImageGenerator component
+- Application successfully runs with new dimension functionality
+
+---
 
 #### Story #3: Advanced Generation Controls
 **As a user, I want to be able to adjust the number of inference steps and guidance scale (CFG).**
