@@ -3,6 +3,7 @@
   import { generationStore, generationActions, settingsActions, type GenerationParams } from '../stores/imageGeneration';
   import { onMount } from 'svelte';
   import DimensionInput from './DimensionInput.svelte';
+  import AdvancedControls from './AdvancedControls.svelte';
 
   // Local state
   let prompt = '';
@@ -111,6 +112,11 @@
     <!-- Dimension Controls -->
     <div class="controls-section">
       <DimensionInput />
+    </div>
+
+    <!-- Advanced Controls -->
+    <div class="controls-section">
+      <AdvancedControls />
     </div>
 
     <!-- Generation Button -->

@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::process::{Command, Stdio};
-use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use anyhow::{Result, Context};
-use tauri::Manager;
 
 // Error handling
 #[derive(Debug, thiserror::Error)]
@@ -106,8 +104,8 @@ impl Default for AppSettings {
 }
 
 // Python backend manager
+#[derive(Clone)]
 struct PythonBackend {
-    process: Option<std::process::Child>,
     backend_path: PathBuf,
 }
 
@@ -123,55 +121,33 @@ impl PythonBackend {
             .join("diffusionbee_backend.py");
 
         Ok(Self {
-            process: None,
             backend_path,
         })
     }
 
-    fn start_backend(&mut self) -> Result<()> {
-        if self.process.is_some() {
-            return Ok(());
+    fn start_backend(&self) -> Result<()> {
+        // TODO: Implement proper backend startup
+        // For now, just validate the backend path exists
+        if !self.backend_path.exists() {
+            return Err(anyhow::anyhow!("Python backend not found at {:?}", self.backend_path));
         }
-
-        let mut cmd = Command::new("python3");
-        cmd.arg(&self.backend_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let mut child = cmd.spawn()
-            .context("Failed to start Python backend")?;
-
-        // Wait a moment for the backend to initialize
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-
-        self.process = Some(child);
         Ok(())
     }
-
-    fn stop_backend(&mut self) {
-        if let Some(mut process) = self.process.take() {
-            let _ = process.kill();
-        }
-    }
 }
 
-impl Drop for PythonBackend {
-    fn drop(&mut self) {
-        self.stop_backend();
-    }
-}
+// Global backend instance with proper synchronization
+static BACKEND: Mutex<Option<PythonBackend>> = Mutex::new(None);
 
-// Global backend instance
-static mut BACKEND: Option<PythonBackend> = None;
-
-fn get_backend() -> Result<&'static mut PythonBackend> {
-    unsafe {
-        if BACKEND.is_none() {
-            BACKEND = Some(PythonBackend::new()?);
-        }
-        Ok(BACKEND.as_mut().unwrap())
+fn get_backend() -> Result<PythonBackend> {
+    let mut backend_guard = BACKEND.lock()
+        .map_err(|_| anyhow::anyhow!("Failed to acquire backend lock"))?;
+    
+    if backend_guard.is_none() {
+        *backend_guard = Some(PythonBackend::new()?);
     }
+    
+    // Clone the backend to avoid holding the lock
+    Ok(backend_guard.as_ref().unwrap().clone())
 }
 
 // Tauri commands
@@ -182,16 +158,15 @@ async fn generate_image(request: ImageGenerationRequest) -> Result<ImageGenerati
 
     let backend = get_backend().map_err(|e| e.to_string())?;
     
-    // Start the backend if not already running
+    // Validate the backend is available
     backend.start_backend().map_err(|e| e.to_string())?;
 
-    // Prepare the JSON request
-    let json_request = serde_json::to_string(&request)
+    // Prepare the JSON request (for future IPC implementation)
+    let _json_request = serde_json::to_string(&request)
         .map_err(|e| e.to_string())?;
 
     // Send the request to the Python backend
-    let command = format!("b2py t2im {}", json_request);
-    
+    // TODO: Implement proper IPC communication with Python backend
     // For now, we'll use a simple approach - in production, you'd want proper IPC
     // This is a placeholder implementation
     let response = ImageGenerationResponse {
