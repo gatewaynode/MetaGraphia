@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import DimensionInput from './DimensionInput.svelte';
   import AdvancedControls from './AdvancedControls.svelte';
+  import ProgressTracker from './ProgressTracker.svelte';
 
   // Local state
   let prompt = '';
@@ -138,6 +139,9 @@
       </button>
     </div>
 
+    <!-- Progress Tracker -->
+    <ProgressTracker />
+
     <!-- Error Display -->
     {#if error}
       <div class="error-message">
@@ -150,16 +154,6 @@
       </div>
     {/if}
 
-    <!-- Progress Bar -->
-    {#if isGenerating}
-      <div class="progress-section">
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
-        <p class="progress-text">Creating your masterpiece...</p>
-      </div>
-    {/if}
-
     <!-- Generated Image Display -->
     {#if currentResult}
       <div class="result-section slide-up">
@@ -167,7 +161,7 @@
         <div class="image-container">
           <img
             src={currentResult.generated_img_path}
-            alt="Generated image from prompt"
+            alt="Generated from prompt"
             class="generated-image"
           />
           <div class="image-overlay">
@@ -338,46 +332,7 @@
     flex-shrink: 0;
   }
 
-  .progress-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    align-items: center;
-  }
 
-  .progress-bar {
-    width: 100%;
-    max-width: 400px;
-    height: 6px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--accent-gradient);
-    border-radius: var(--radius-sm);
-    animation: progress 2s ease-in-out infinite;
-  }
-
-  @keyframes progress {
-    0% {
-      width: 0%;
-    }
-    50% {
-      width: 70%;
-    }
-    100% {
-      width: 100%;
-    }
-  }
-
-  .progress-text {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    margin: 0;
-  }
 
   .result-section {
     display: flex;

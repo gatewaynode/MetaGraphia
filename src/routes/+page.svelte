@@ -1,5 +1,6 @@
 <script>
   import ImageGenerator from '../lib/components/ImageGenerator.svelte';
+  import Settings from '../lib/components/Settings.svelte';
   import '../app.css';
 </script>
 
@@ -36,6 +37,12 @@
   <!-- Main Content -->
   <div class="main-content slide-up">
     <div class="container">
+      <div class="header-section">
+        <h1 class="app-title">
+          <span class="text-gradient">DiffusionBee</span> Tauri
+        </h1>
+        <Settings />
+      </div>
       <ImageGenerator />
     </div>
   </div>
@@ -200,6 +207,15 @@
     padding: var(--spacing-2xl) 0;
     position: relative;
     z-index: 10;
+  }
+
+  .header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-2xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-primary);
   }
 
   /* Responsive Design */
