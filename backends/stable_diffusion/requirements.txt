@@ -1,0 +1,17 @@
+tensorflow==2.10.0
+numpy
+regex
+tqdm
+Pillow==9.4.0
+scipy
+ftfy
+fickling
+requests
+pyinstaller 
+onnxruntime
+opencv-python
+safetensors
+cython
+numexpr
+pandas
+scikit-image

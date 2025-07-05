@@ -32,10 +32,12 @@ export interface GenerationState {
 }
 
 export interface AppSettings {
-    default_width: number;
-    default_height: number;
-    default_inference_steps: number;
-    default_guidance_scale: number;
+  default_width: number;
+  default_height: number;
+  default_inference_steps: number;
+  default_guidance_scale: number;
+  output_directory: string;
+  model_path: string;
 }
 
 // Default generation parameters
@@ -76,7 +78,9 @@ export const settingsStore: Writable<AppSettings> = writable({
     default_width: 512,
     default_height: 512,
     default_inference_steps: 20,
-    default_guidance_scale: 7.5
+    default_guidance_scale: 7.5,
+    output_directory: '',
+    model_path: ''
 });
 
 // Actions
@@ -202,5 +206,25 @@ export const settingsActions = {
             
             return newSettings;
         });
+    },
+    
+    // Reset to defaults
+    resetToDefaults: async () => {
+        try {
+            const defaultSettings: AppSettings = {
+                default_width: 512,
+                default_height: 512,
+                default_inference_steps: 20,
+                default_guidance_scale: 7.5,
+                output_directory: '',
+                model_path: ''
+            };
+            
+            await invoke('save_settings', { settings: defaultSettings });
+            settingsStore.set(defaultSettings);
+        } catch (error) {
+            console.error('Failed to reset settings:', error);
+            throw error;
+        }
     }
 }; 
